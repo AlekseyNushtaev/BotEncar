@@ -5,6 +5,7 @@ import requests
 from bot import bot
 from config import CHANEL_ID, ADMIN_IDS, KEY_EXCHANGERATE
 from encar_pars import encar_pars
+from image_creator import image_all
 from translator import trans
 
 router = Router()
@@ -54,16 +55,18 @@ async def parsing(message: types.Message):
         link = message.text
         car_list = await encar_pars(link)
         text = await create_text(car_list)
-        for i in range(10):
-            media = [types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'pics/{i * 2 + 1}.jpg'))]
+        image_all()
+        media = []
+        for i in range(1, 10):
             if i != 9:
-                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'pics/{i * 2 + 2}.jpg')))
+                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'picres/{i}.png')))
             else:
-                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'pics/{i * 2 + 2}.jpg'), caption=text))
-            await bot.send_media_group(CHANEL_ID, media)
+                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'picres/{i}.png'), caption=text))
+        await bot.send_media_group(CHANEL_ID, media)
         await message.answer('Сообщение сформировано и направлено в канал')
     except Exception as e:
         print(e)
+        bot.send_message(1012882762, str(e))
         await message.answer(
 """
 Что-то пошло не так, проверьте корректность ссылки в браузере:
