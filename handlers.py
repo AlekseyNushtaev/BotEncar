@@ -6,23 +6,15 @@ from bot import bot
 from config import CHANEL_ID, ADMIN_IDS, KEY_EXCHANGERATE
 from encar_pars import encar_pars
 from image_creator import image_all
+from kbchachacha_pars import kbchachacha_pars
+from kcar_pars import kcar_pars
 from translator import trans
 
 router = Router()
 
 async def create_text(car_list):
-    model_ = await trans(car_list[0])
-    model = model_.replace('The ', '').replace('Benz', 'Mercedes-Benz').replace('the ', '')
-    year = '20' + car_list[1][:2]
-    if ',' in car_list[3]:
-        price_co = float((car_list[3].replace(',', '.'))) * 10000000
-    else:
-        price_co = int(car_list[3]) * 10000
-    response = requests.get(f"https://v6.exchangerate-api.com/v6/{KEY_EXCHANGERATE}/latest/USD")
-    currency_usd = response.json()["conversion_rates"]["KRW"]
-    price_usd = str((int(price_co/currency_usd + 1500) // 100) * 100)
-    if len(price_usd) > 3:
-        price_usd = price_usd[:-3] + ' ' + price_usd[-3:]
+    model = car_list[0]
+    year = car_list[1]
     km = ''
     km_ = car_list[2]
     for k in km_:
@@ -30,13 +22,18 @@ async def create_text(car_list):
             km += k
     if len(km) > 3:
         km = km[:-3] + ' ' + km[-3:]
+    response = requests.get(f"https://v6.exchangerate-api.com/v6/{KEY_EXCHANGERATE}/latest/USD")
+    currency_usd = response.json()["conversion_rates"]["KRW"]
+    price_usd = str((int(car_list[3]/currency_usd + 1500) // 100) * 100)
+    if len(price_usd) > 3:
+        price_usd = price_usd[:-3] + ' ' + price_usd[-3:]
     text =f"""
 Доступен к заказу из 🇰🇷
 {model}
 {year} год
 {km} км
 Без дтп и окрасов
-Бюджет под 🔑 до Москвы {price_usd} $
+Цена в Корее {price_usd} $
 Возможна доставка во все регионы РФ 🇷🇺
 
 💭 89033635817, Михаил 🟢
@@ -50,10 +47,15 @@ async def process_start_admin(message: Message):
 
 @router.message(F.text, F.from_user.id.in_(ADMIN_IDS))
 async def parsing(message: types.Message):
-    await message.answer('Началась обработка ссылки, займет около 30 сек...')
+    await message.answer('Началась обработка ссылки...')
     try:
         link = message.text
-        car_list = await encar_pars(link)
+        if 'encar' in link:
+            car_list = await encar_pars(link)
+        elif 'kcar' in link:
+            car_list = await kcar_pars(link)
+        elif 'kbchachacha' in link:
+            car_list = await kbchachacha_pars(link)
         text = await create_text(car_list)
         image_all()
         media = []
@@ -66,7 +68,7 @@ async def parsing(message: types.Message):
         await message.answer('Сообщение сформировано и направлено в канал')
     except Exception as e:
         print(e)
-        bot.send_message(1012882762, str(e))
+        await bot.send_message(1012882762, str(e))
         await message.answer(
 """
 Что-то пошло не так, проверьте корректность ссылки в браузере:

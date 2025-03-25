@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 import bs4
 import time
 from bot import bot
+from translator import trans
 
 
 async def get_photo(client, link, i):
@@ -33,10 +34,14 @@ async def encar_pars(link):
         time.sleep(10)
         html = browser.page_source
         soup = bs4.BeautifulSoup(html, 'lxml')
-        model = soup.find(attrs={"class": "DetailSummary_tit_car__0OEVh"}).text.strip()
-        year = soup.find(attrs={"class": "DetailSummary_info_summary__YtVVw"}).find_all("dd")[0].text.strip()
+        model_ = soup.find(attrs={"class": "DetailSummary_tit_car__0OEVh"}).text.strip()
+        year = '20' + soup.find(attrs={"class": "DetailSummary_info_summary__YtVVw"}).find_all("dd")[0].text.strip()[:2]
         km = soup.find(attrs={"class": "DetailSummary_info_summary__YtVVw"}).find_all("dd")[1].text.strip()
-        price = soup.find(attrs={"class": "DetailLeadCase_point__vdG4b"}).text.strip()
+        price_ = soup.find(attrs={"class": "DetailLeadCase_point__vdG4b"}).text.strip()
+        if ',' in price_:
+            price = float((price_.replace(',', '.'))) * 10000000
+        else:
+            price = int(price_) * 10000
         img_lst = []
         img_ = soup.find(attrs={"class": "DetailCarPhotoPc_img_big__LNVDo"}).find_all("img")
         for im in img_[1:-1]:
@@ -65,7 +70,7 @@ async def encar_pars(link):
             time.sleep(0.5)
             html = browser.page_source
             soup = bs4.BeautifulSoup(html, 'lxml')
-            model = soup.find(attrs={"class": "Intro_profile_list__arnX_"}).find("em").text.strip() + ' ' + model
+            model_ = soup.find(attrs={"class": "Intro_profile_list__arnX_"}).find("em").text.strip() + ' ' + model_
         except Exception:
             try:
                 try:
@@ -87,7 +92,7 @@ async def encar_pars(link):
                 time.sleep(1)
                 html = browser.page_source
                 soup = bs4.BeautifulSoup(html, 'lxml')
-                model = soup.find(attrs={"class": "CarMainInfo_tit__F2azJ"}).text.strip()
+                model_ = soup.find(attrs={"class": "CarMainInfo_tit__F2azJ"}).text.strip()
             except Exception:
                 pass
         async with aiohttp.ClientSession() as client:
@@ -97,6 +102,9 @@ async def encar_pars(link):
                 coros.append(get_photo(client, link, i))
             await asyncio.gather(*coros)
         browser.quit()
+        model = await trans(model_)
+        model = model.replace('The ', '').replace('Benz', 'Mercedes-Benz').replace('the ', '')
+
         return [model, year, km, price]
     except Exception as e:
         await bot.send_message(1012882762, str(e))
