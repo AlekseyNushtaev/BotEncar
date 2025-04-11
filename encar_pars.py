@@ -1,4 +1,6 @@
 import asyncio
+from pprint import pprint
+
 import aiofiles
 import aiohttp
 from selenium.webdriver.chrome.options import Options
@@ -64,7 +66,7 @@ async def encar_pars(link):
                 except Exception:
                     browser.find_element(By.CSS_SELECTOR,
                                          '#detailStatus > div.ResponsiveTemplete_box_type__10yIs > div:nth-child(4) > div.ResponsiveTemplete_button_type__pjT76 > button').click()
-            time.sleep(10)
+            time.sleep(15)
             new_window = browser.window_handles[1]
             browser.switch_to.window(new_window)
             time.sleep(0.5)
@@ -108,3 +110,35 @@ async def encar_pars(link):
         return [model, year, km, price]
     except Exception as e:
         await bot.send_message(1012882762, str(e))
+
+
+async def encar_filter(link):
+    res = []
+    chrome_driver_path = ChromeDriverManager().install()
+    browser_service = Service(executable_path=chrome_driver_path)
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.page_load_strategy = 'eager'
+    browser = Chrome(service=browser_service, options=options)
+    browser.maximize_window()
+    browser.get(link)
+    time.sleep(50)
+    html = browser.page_source
+    soup = bs4.BeautifulSoup(html, 'lxml')
+    cars = soup.find(attrs={"class": "car_list"}).find_all("a")
+    for car in cars:
+        link = 'http://www.encar.com/' + car.get("href")
+        res.append(link)
+    browser.quit()
+    time.sleep(2)
+    return res
+
+
+async def main():
+    res = await encar_filter('http://www.encar.com/fc/fc_carsearchlist.do?carType=for#!%7B%22action%22%3A%22(And.Hidden.N._.(C.CarType.N._.Manufacturer.%EB%B2%A4%EC%B8%A0.))%22%2C%22toggle%22%3A%7B%7D%2C%22layer%22%3A%22%22%2C%22sort%22%3A%22ModifiedDate%22%2C%22page%22%3A1%2C%22limit%22%3A20%2C%22searchKey%22%3A%22%22%2C%22loginCheck%22%3Afalse%7D')
+    pprint(res)
+
+if __name__ == "__main__":
+    asyncio.run(main())
