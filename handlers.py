@@ -18,6 +18,7 @@ from image_creator import image_all
 from kbchachacha_pars import kbchachacha_pars
 from kcar_pars import kcar_pars
 from translator import trans
+from vk import vk_post
 
 router = Router()
 
@@ -113,6 +114,7 @@ async def scheduler():
                                     text = await create_text(car_list)
                                     image_all()
                                     await send_media(text)
+                                    await vk_post(text)
                                 except Exception as e:
                                     print(e)
                                     await bot.send_message(1012882762, str(e))
@@ -291,7 +293,12 @@ async def parsing(message: types.Message):
             else:
                 media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'picres/{i}.png'), caption=text))
         await bot.send_media_group(CHANEL_ID, media)
-        await message.answer('Сообщение сформировано и направлено в канал')
+        await message.answer('Сообщение сформировано и направлено в канал ТГ')
+        try:
+            await vk_post(text)
+            await message.answer('Сообщение сформировано и направлено в сообщество ВК')
+        except Exception:
+            pass
     except Exception as e:
         print(e)
         await bot.send_message(1012882762, str(e))
