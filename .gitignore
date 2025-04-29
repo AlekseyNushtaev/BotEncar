@@ -6,6 +6,7 @@ __pycache__/
 
 #
 autoposts.db
+korea.json
 
 # C extensions
 *.so

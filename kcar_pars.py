@@ -1,7 +1,9 @@
 import asyncio
+import datetime
 
 import aiofiles
 import aiohttp
+import requests
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
@@ -10,6 +12,7 @@ from selenium.webdriver.common.by import By
 import bs4
 import time
 from bot import bot
+from config import KEY_EXCHANGERATE
 from translator import trans
 
 
@@ -88,7 +91,10 @@ async def kcar_pars(link):
         browser.quit()
         model = await trans(model_)
         model = model.replace('The ', '').replace('Benz', 'Mercedes-Benz').replace('the ', '')
-
-        return [model, year, km, price]
+        time_pars = datetime.datetime.now()
+        response = requests.get(f"https://v6.exchangerate-api.com/v6/{KEY_EXCHANGERATE}/latest/USD")
+        currency_usd = response.json()["conversion_rates"]["KRW"]
+        price_usd = str((int(price / currency_usd + 1500) // 100) * 100)
+        return [model, year, km, price_usd, img_lst, time_pars]
     except Exception as e:
         await bot.send_message(1012882762, str(e))

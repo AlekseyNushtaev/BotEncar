@@ -15,6 +15,7 @@ from config import CHANEL_ID, ADMIN_IDS, KEY_EXCHANGERATE, DELTA
 from db.utils import Database
 from encar_pars import encar_pars, encar_filter
 from image_creator import image_all
+from json_maker import json_maker
 from kbchachacha_pars import kbchachacha_pars
 from kcar_pars import kcar_pars
 from translator import trans
@@ -67,9 +68,7 @@ async def create_text(car_list):
             km += k
     if len(km) > 3:
         km = km[:-3] + ' ' + km[-3:]
-    response = requests.get(f"https://v6.exchangerate-api.com/v6/{KEY_EXCHANGERATE}/latest/USD")
-    currency_usd = response.json()["conversion_rates"]["KRW"]
-    price_usd = str((int(car_list[3]/currency_usd + 1500) // 100) * 100)
+    price_usd = car_list[3]
     if len(price_usd) > 3:
         price_usd = price_usd[:-3] + ' ' + price_usd[-3:]
     text =f"""
@@ -112,6 +111,7 @@ async def scheduler():
                                     elif 'kbchachacha' in link:
                                         car_list = await kbchachacha_pars(link)
                                     text = await create_text(car_list)
+                                    json_maker(car_list, text)
                                     image_all()
                                     await send_media(text)
                                     await vk_post(text)
@@ -285,6 +285,7 @@ async def parsing(message: types.Message):
         elif 'kbchachacha' in link:
             car_list = await kbchachacha_pars(link)
         text = await create_text(car_list)
+        json_maker(car_list, text)
         image_all()
         media = []
         for i in range(1, 10):
