@@ -43,13 +43,13 @@ async def send_media(text):
     while True:
         try:
             media = []
-            for i in range(1, 10):
-                if i != 9:
+            for i in range(1, 9):
+                if i != 8:
                     media.append(types.InputMediaPhoto(type='photo',
-                                                       media=types.FSInputFile(f'picres/{i}.png')))
+                                                       media=types.FSInputFile(f'pics/{i}.jpg')))
                 else:
                     media.append(types.InputMediaPhoto(type='photo',
-                                                       media=types.FSInputFile(f'picres/{i}.png'),
+                                                       media=types.FSInputFile(f'pics/{i}.jpg'),
                                                        caption=text))
             await bot.send_media_group(CHANEL_ID, media)
             time.sleep(3)
@@ -288,11 +288,11 @@ async def parsing(message: types.Message):
         json_maker(car_list, text)
         image_all()
         media = []
-        for i in range(1, 10):
-            if i != 9:
-                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'picres/{i}.png')))
+        for i in range(1, 9):
+            if i != 8:
+                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'pics/{i}.jpg')))
             else:
-                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'picres/{i}.png'), caption=text))
+                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'pics/{i}.jpg'), caption=text))
         await bot.send_media_group(CHANEL_ID, media)
         await message.answer('Сообщение сформировано и направлено в канал ТГ')
         try:

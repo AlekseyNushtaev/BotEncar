@@ -5,7 +5,10 @@ from pprint import pprint
 import aiofiles
 import aiohttp
 import requests
+from selenium.common import NoAlertPresentException, TimeoutException
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.wait import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver import Chrome
@@ -34,6 +37,7 @@ async def encar_pars(link):
         options.add_argument('--disable-dev-shm-usage')
         options.page_load_strategy = 'eager'
         browser = Chrome(service=browser_service, options=options)
+
         browser.maximize_window()
         browser.get(link)
         time.sleep(10)
@@ -118,6 +122,16 @@ async def encar_pars(link):
         await bot.send_message(1012882762, str(e))
 
 
+def handle_alert(driver, timeout=3):
+    try:
+        WebDriverWait(driver, timeout).until(EC.alert_is_present())
+        alert = driver.switch_to.alert
+        print("Alert text:", alert.text)
+        alert.accept()  # или alert.dismiss()
+        return True
+    except (NoAlertPresentException, TimeoutException):
+        return False
+
 async def encar_filter(link):
     res = []
     chrome_driver_path = ChromeDriverManager().install()
@@ -128,6 +142,16 @@ async def encar_filter(link):
     options.add_argument('--disable-dev-shm-usage')
     options.page_load_strategy = 'eager'
     browser = Chrome(service=browser_service, options=options)
+    browser.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        'source': '''
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_JSON;
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Object;
+            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Proxy;    
+        '''
+    })
     browser.maximize_window()
     browser.get(link)
     time.sleep(50)
@@ -143,8 +167,13 @@ async def encar_filter(link):
 
 
 async def main():
-    res = await encar_filter('http://www.encar.com/fc/fc_carsearchlist.do?carType=for#!%7B%22action%22%3A%22(And.Hidden.N._.(C.CarType.N._.Manufacturer.%EB%B2%A4%EC%B8%A0.))%22%2C%22toggle%22%3A%7B%7D%2C%22layer%22%3A%22%22%2C%22sort%22%3A%22ModifiedDate%22%2C%22page%22%3A1%2C%22limit%22%3A20%2C%22searchKey%22%3A%22%22%2C%22loginCheck%22%3Afalse%7D')
+    link = 'http://www.encar.com/dc/dc_carsearchlist.do?carType=kor#!%7B%22action%22%3A%22(And.Hidden.N._.CarType.Y._.Mileage.range(..100000)._.Year.range(202000..202299).)%22%2C%22toggle%22%3A%7B%7D%2C%22layer%22%3A%22%22%2C%22sort%22%3A%22ModifiedDate%22%2C%22page%22%3A1%2C%22limit%22%3A20%2C%22searchKey%22%3A%22%22%2C%22loginCheck%22%3Afalse%7D'
+    res = await encar_filter(link)
     pprint(res)
+    result = await encar_pars(res[0])
+    print(result)
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
