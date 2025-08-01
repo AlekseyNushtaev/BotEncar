@@ -27,6 +27,28 @@ async def get_photo(client, link, i):
         await f.close()
 
 
+def drom_nalog(volume, year, price, browser):
+    year_now = datetime.datetime.now().year
+    delta_ = year_now - int(year)
+    if delta_ < 3:
+        delta = 'UNDER_3'
+    elif delta_ > 5:
+        delta = 'OVER_5'
+    else:
+        delta = 'FROM_3_TO_5'
+    browser.get(f'https://www.drom.ru/world/calculator/?price={int(price)}&currency=KRW&vehicleAge={delta}&engineType=DIESEL_OR_GASOLINE&engineVolumeInCubicCentimeters={int(volume)}&importPurpose=USAGE')
+    time.sleep(4)
+    html = browser.page_source
+    soup = bs4.BeautifulSoup(html, 'lxml')
+    poshlina_ = soup.find_all(attrs={"class": "css-17h77f e1pqbk745"})[1].text.strip()
+    poshlina = ''
+    for p in poshlina_:
+        if p.isdigit():
+            poshlina += p
+    browser.quit()
+    return int(poshlina)
+
+
 async def encar_pars(link):
     try:
         chrome_driver_path = ChromeDriverManager().install()
@@ -40,7 +62,7 @@ async def encar_pars(link):
 
         browser.maximize_window()
         browser.get(link)
-        time.sleep(10)
+        time.sleep(20)
         html = browser.page_source
         soup = bs4.BeautifulSoup(html, 'lxml')
         model_ = soup.find(attrs={"class": "DetailSummary_tit_car__0OEVh"}).text.strip()
@@ -60,64 +82,60 @@ async def encar_pars(link):
             img_lst.append(img)
             time.sleep(0.2)
         try:
-            try:
-                browser.find_element(By.XPATH,
-                                 '/html/body/div[1]/div/div[1]/div[1]/div[4]/div[5]/div[2]/div[4]/div[2]/button').click()
-            except Exception:
-                try:
-                    buttons = browser.find_elements(By.TAG_NAME, 'button')
-                    for button in buttons:
-                        if button.text.strip() == '차량이력 자세히 보기':
-                            button.click()
-                            break
-                except Exception:
-                    browser.find_element(By.CSS_SELECTOR,
-                                         '#detailStatus > div.ResponsiveTemplete_box_type__10yIs > div:nth-child(4) > div.ResponsiveTemplete_button_type__pjT76 > button').click()
-            time.sleep(15)
-            new_window = browser.window_handles[1]
-            browser.switch_to.window(new_window)
-            time.sleep(0.5)
+            model_link = soup.find(attrs={"class": "DetailMocha_link_model__W7WLe"}).get('href')
+        except:
+            model_link = None
+        try:
+            volume = ''
+            browser.find_element(By.CLASS_NAME, "DetailSummary_btn_detail__msm-h").click()
+            time.sleep(2)
             html = browser.page_source
             soup = bs4.BeautifulSoup(html, 'lxml')
-            model_ = soup.find(attrs={"class": "Intro_profile_list__arnX_"}).find("em").text.strip() + ' ' + model_
-        except Exception:
+            techs_ = soup.find(attrs={"class": "DetailSpec_list_default__Gx+ZA"}).find_all("li")
+            for tech in techs_:
+                title = tech.find(attrs={"class": "DetailSpec_tit__BRQb+"}).text.strip()
+                if title == '배기량':
+                    volume_ = tech.find(attrs={"class": "DetailSpec_txt__NGapF"}).text.strip()
+                    for e in volume_:
+                        if e.isdigit():
+                            volume += e
+                    volume = int(volume)
+                    break
+        except Exception as e:
+            print(e)
+            volume = ''
+
+        if model_link:
             try:
-                try:
-                    browser.find_element(By.XPATH,
-                                         '/html/body/div[1]/div/div[1]/div[1]/div[4]/div[5]/div[2]/div[2]/div[3]/button').click()
-                except Exception:
-                    try:
-                        buttons = browser.find_elements(By.TAG_NAME, 'button')
-                        for button in buttons:
-                            if button.text.strip() == '차량관리상태 모두보기':
-                                button.click()
-                                break
-                    except Exception:
-                        browser.find_element(By.CSS_SELECTOR,
-                                             '#detailStatus > div.ResponsiveTemplete_box_type__10yIs > div.ResponsiveTemplete_text_image_type__tycpJ > div.ResponsiveTemplete_button_type__pjT76 > button').click()
-                time.sleep(5)
-                new_window = browser.window_handles[1]
-                browser.switch_to.window(new_window)
-                time.sleep(1)
+                browser.get(model_link)
+                time.sleep(10)
                 html = browser.page_source
                 soup = bs4.BeautifulSoup(html, 'lxml')
-                model_ = soup.find(attrs={"class": "CarMainInfo_tit__F2azJ"}).text.strip()
+                model_ = soup.find(attrs={"class": "tit_mocha"}).text.strip()
+                print(model_)
             except Exception:
                 pass
+
         async with aiohttp.ClientSession() as client:
             coros = []
             for i in range(len(img_lst)):
                 link = img_lst[i]
                 coros.append(get_photo(client, link, i))
             await asyncio.gather(*coros)
-        browser.quit()
         model = await trans(model_)
-        model = model.replace('The ', '').replace('Benz', 'Mercedes-Benz').replace('the ', '')
+        model = model.split('\n')[0].replace('The ', '').replace('Benz', 'Mercedes-Benz').replace('the ', '')
         time_pars = datetime.datetime.now()
         response = requests.get(f"https://v6.exchangerate-api.com/v6/{KEY_EXCHANGERATE}/latest/USD")
-        currency_usd = response.json()["conversion_rates"]["KRW"]
-        price_usd = str((int(price / currency_usd + 1500) // 100) * 100)
-        return [model, year, km, price_usd, img_lst, time_pars]
+        currency_krw = response.json()["conversion_rates"]["KRW"]
+        currency_rub = response.json()["conversion_rates"]["RUB"]
+        try:
+            poshlina = drom_nalog(volume, year, price, browser)
+            price_rub = str(((int((price / currency_krw + 2000) * currency_rub + 380000 + poshlina)) // 1000) * 1000)
+        except Exception as e:
+            print(e)
+            price_rub = 'Требует уточнения'
+        browser.quit()
+        return [model, year, km, price_rub, img_lst, time_pars]
     except Exception as e:
         await bot.send_message(1012882762, str(e))
 
@@ -131,6 +149,7 @@ def handle_alert(driver, timeout=3):
         return True
     except (NoAlertPresentException, TimeoutException):
         return False
+
 
 async def encar_filter(link):
     res = []
@@ -167,8 +186,8 @@ async def encar_filter(link):
 
 
 async def main():
-    link = 'https://car.encar.com/list/car?page=1&search=%7B%22type%22%3A%22car%22%2C%22action%22%3A%22(And.Hidden.N._.Price.range(500..1700)._.Mileage.range(..100000)._.CarType.A._.Year.range(202000..202299).)%22%2C%22title%22%3A%2220%2F01%EC%8B%9D%20~%2022%2F12%EC%8B%9D%22%2C%22toggle%22%3A%7B%7D%2C%22layer%22%3A%22%22%2C%22sort%22%3A%22MobileModifiedDate%22%7D'
-    res = await encar_filter(link)
+    link = 'https://fem.encar.com/cars/detail/39215068?pageid=dc_carsearch&listAdvType=normal&carid=39215068&view_type=hs_ad&adv_attribute=hs_ad&wtClick_korList=019&advClickPosition=kor_normal_p1_g8&tempht_arg=I1ppJ3Af83C7_7'
+    res = await encar_pars(link)
     pprint(res)
 
 

@@ -43,13 +43,13 @@ async def send_media(text):
     while True:
         try:
             media = []
-            for i in range(1, 9):
-                if i != 8:
+            for i in range(1, 10):
+                if i != 9:
                     media.append(types.InputMediaPhoto(type='photo',
-                                                       media=types.FSInputFile(f'pics/{i}.jpg')))
+                                                       media=types.FSInputFile(f'picres/{i}.png')))
                 else:
                     media.append(types.InputMediaPhoto(type='photo',
-                                                       media=types.FSInputFile(f'pics/{i}.jpg'),
+                                                       media=types.FSInputFile(f'picres/{i}.png'),
                                                        caption=text))
             await bot.send_media_group(CHANEL_ID, media)
             time.sleep(3)
@@ -85,8 +85,37 @@ async def create_text(car_list):
     return text
 
 
+async def create_text_encar(car_list):
+    model = car_list[0]
+    year = car_list[1]
+    km = ''
+    km_ = car_list[2]
+    for k in km_:
+        if k.isdigit():
+            km += k
+    if len(km) > 3:
+        km = km[:-3] + ' ' + km[-3:]
+    price_usd = car_list[3]
+    if len(price_usd) > 6:
+        price_usd = price_usd[:-6] + ' ' + price_usd[-6:-3] + ' ' + price_usd[-3:]
+    elif len(price_usd) > 3:
+        price_usd = price_usd[:-3] + ' ' + price_usd[-3:]
+    text =f"""
+Доступен к заказу из 🇰🇷
+{model}
+{year} год
+{km} км
+Без дтп и окрасов
+Цена в Москве {price_usd} ₽
+Возможна доставка во все регионы РФ 🇷🇺
+
+💭 89033635817, Михаил 🟢
+"""
+    return text
+
+
 async def scheduler():
-    while True:
+    while False:
         flag = False
         autoposts = await Database.get_autoposts()
         time = int(datetime.datetime.now().hour) + DELTA
@@ -110,7 +139,10 @@ async def scheduler():
                                         car_list = await kcar_pars(link)
                                     elif 'kbchachacha' in link:
                                         car_list = await kbchachacha_pars(link)
-                                    text = await create_text(car_list)
+                                    if 'encar' in link:
+                                        text = await create_text_encar(car_list)
+                                    else:
+                                        text = await create_text(car_list)
                                     json_maker(car_list, text)
                                     image_all()
                                     await send_media(text)
@@ -284,15 +316,18 @@ async def parsing(message: types.Message):
             car_list = await kcar_pars(link)
         elif 'kbchachacha' in link:
             car_list = await kbchachacha_pars(link)
-        text = await create_text(car_list)
+        if 'encar' in link:
+            text = await create_text_encar(car_list)
+        else:
+            text = await create_text(car_list)
         json_maker(car_list, text)
         image_all()
         media = []
-        for i in range(1, 9):
-            if i != 8:
-                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'pics/{i}.jpg')))
+        for i in range(1, 10):
+            if i != 9:
+                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'picres/{i}.png')))
             else:
-                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'pics/{i}.jpg'), caption=text))
+                media.append(types.InputMediaPhoto(type='photo', media=types.FSInputFile(f'picres/{i}.png'), caption=text))
         await bot.send_media_group(CHANEL_ID, media)
         await message.answer('Сообщение сформировано и направлено в канал ТГ')
         try:

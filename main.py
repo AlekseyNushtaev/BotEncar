@@ -1,7 +1,9 @@
 import asyncio
 import logging
-import handlers
+import handlers_autotorg
 from aiogram import Dispatcher
+
+import handlers_icarkorea
 from bot import bot
 from db.utils import Database
 
@@ -13,10 +15,12 @@ async def main() -> None:
     logging.info('Starting bot')
     await Database.init_db()
     loop = asyncio.get_event_loop()
-    loop.create_task(handlers.scheduler())
+    loop.create_task(handlers_autotorg.scheduler())
+    # loop.create_task(handlers_icarkorea.scheduler())
 
     dp = Dispatcher()
-    dp.include_router(handlers.router)
+    dp.include_router(handlers_autotorg.router)
+    # dp.include_router(handlers_icarkorea.router)
 
     try:
         # Удаляем вебхук (если использовали webhook ранее)
